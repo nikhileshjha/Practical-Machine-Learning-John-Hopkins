@@ -1,0 +1,66 @@
+---
+title: "Practical Machine Learning Project"
+author: "Nikhilesh Jha"
+date: "2/27/2018"
+output: html_document
+---
+
+# Executive Summary
+In this project we fit different models to the dataset containing the way the Unilateral Dumbbell Curls was performed. While Class A refers to proper execution of the exercise, the rest correspond to improper execution. We use the features in the test data set to predict whether the person is executing the exercise properly or not. And if the person isn't then what is he/she is doing wrong.
+
+We split the data given to us into two subset of for training and cross validation, with 70% being allocated to the training set.
+
+# Feature Selection
+The data in the testing set has several columns with NAs. These columns will not contribute to the prediction hence we remove these columns as well while training models.
+The number of features is reduced from 160 to just 60.
+
+# Different Models
+We use three different type of models - Recursive Partitioning, Linear Discriminant Analysis and Random Forest.
+The Recursive Partioning decision tree and LDA both have 5 fold partition on the training set provided to them.
+```{r Plot, echo=FALSE}
+suppressMessages(library(caret))
+suppressMessages(library(rpart.plot)) # Used to plot the decision tree
+training <- read.csv("~/Desktop/Coursera/John Hopkins Stats Course/Practical Machine Learning/pml-training.csv")
+testURL <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+testing <- read.csv(url(testURL))
+inTrain <- createDataPartition(training$classe,p=0.7,list=FALSE)
+training_sub <- training[inTrain,]
+cv <- training[-inTrain,]
+col_used <- colnames(testing[,colSums(is.na(testing))==0])
+red_training <- cbind(training_sub[,col_used[-60]],classe = training_sub$classe)
+red_cv <- cv[,col_used[-60]]
+red_test <- testing[,col_used[-60]]
+
+# Using rpart
+control <- trainControl(method = "CV", number = 5)
+model_rpart <- train(classe ~ ., data = red_training, method = "rpart",trControl = control)
+pred_rpart <- predict(model_rpart,red_training[,-60])
+# confusionMatrix(red_training$classe,pred_rpart)
+# Accuracy is 66.16%
+pred_rpart_cv <- predict(model_rpart, red_cv)
+# confusionMatrix(cv$classe,pred_rpart_cv)
+# Plotting the result
+# The accuracy is 66.17%
+prp(model_rpart$finalModel, box.palette = "Reds", tweak = 1.2)
+```
+
+
+The Accuracy on the training data from the recursive tree is 66.16% and on the cross validation set it 66.17%.
+The Accuracy on the training data from Linear Discriminant Analysis is 100% and on the cross validation data it 99.98%.
+Like the LDA Analysis, the Random Forest model has an accuracy of 100% on the training data and 99.98% accuracy on cross validation data.
+The out of sample error is slightly higher, which is to be expected in these models.
+We will be using the Random Forest and LDA model for prediction on test set due to higher accuracy.
+
+
+```{r Result, echo = FALSE}
+options(warn=-1)
+# Running a Linear Discriminant Analysis model
+
+model_lda <- train(classe ~ ., method = "lda",trControl = control, data = red_training)
+
+```
+# Final Prediction
+```{r print}
+predict(model_lda,red_test)
+```
+All the 20 entries in the final data set correspond to correct execution of exercise in both the LDA and Random Forest models.
